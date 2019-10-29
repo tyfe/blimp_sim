@@ -77,6 +77,8 @@ const airResistSlider = document.getElementById('airResistance');
 const airResistSliderText = document.getElementById('airResistanceValue');
 const windSpeedSlider = document.getElementById('windSpeed');
 const windSpeedSliderText = document.getElementById('windSpeedValue');
+const leftMotorSpeedElement = document.getElementById('motorScaleValue1');
+const rightMotorSpeedElement = document.getElementById('motorScaleValue2');
 
 // eslint-disable-next-line no-unused-vars
 let windSpeed = 0;
@@ -139,7 +141,6 @@ Matter.Events.on(engine, 'beforeTick', () => {
   });
   Matter.Body.applyForce(blimpBase, leftPositionOffset, leftMotorForce);
   Matter.Body.applyForce(blimpBase, rightPositionOffset, rightMotorForce);
-  // motorScaleValueText.value = motorScale.toFixed(2);
 });
 
 // setup for remote connection
@@ -155,7 +156,13 @@ Matter.Events.on(engine, 'afterUpdate', () => {
     angularVelocity: blimpBase.angularVelocity,
     linearVelocity: blimpBase.velocity,
   };
-  socket.send(JSON.stringify(message));
+
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(message));
+  }
+
+  leftMotorSpeedElement.value = leftMotorLevel;
+  rightMotorSpeedElement.value = rightMotorLevel;
 });
 
 socket.onmessage = (e) => {

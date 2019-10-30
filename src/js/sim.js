@@ -13,6 +13,7 @@ const { world } = engine;
 
 const motorForce = 0.0005 * (1 / 128);
 const blimpRadius = 30;
+const timeDelta = 16.666; // time delta in ms
 
 // create renderer
 const render = Render.create({
@@ -145,14 +146,25 @@ Matter.Events.on(engine, 'beforeTick', () => {
 
 // setup for remote connection
 const socket = new WebSocket('ws://localhost:5005');
+const velocityList = [];
 
 socket.onopen = () => {
   console.log('Connection to localhost succeeded');
 };
 
 Matter.Events.on(engine, 'afterUpdate', () => {
+  if (velocityList.length > 1) {
+    velocityList.pop();
+  }
+  velocityList.push(blimpBase.velocity);
+  const sum = velocityList.reduce((a, b) => ({ x: a.x + b.x, y: a.y + b.y }));
+  const acceleration = {
+    x: sum.x / (timeDelta * velocityList.length),
+    y: sum.y / (timeDelta * velocityList.length),
+  };
+
   const message = {
-    acceleration: { x: 0, y: 0 },
+    acceleration,
     angularVelocity: blimpBase.angularVelocity,
     linearVelocity: blimpBase.velocity,
   };

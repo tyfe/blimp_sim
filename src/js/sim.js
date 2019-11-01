@@ -30,7 +30,6 @@ Render.run(render);
 
 // create runner
 const runner = Runner.create();
-Runner.run(runner, engine);
 
 world.gravity.y = 0;
 
@@ -153,9 +152,11 @@ socket.onopen = () => {
 };
 
 Matter.Events.on(engine, 'afterUpdate', () => {
-  if (velocityList.length > 1) {
+  if (velocityList.length > 5) {
     velocityList.pop();
   }
+
+  // need to make velocity and acceleration relative to blimp
   velocityList.push(blimpBase.velocity);
   const sum = velocityList.reduce((a, b) => ({ x: a.x + b.x, y: a.y + b.y }));
   const acceleration = {
@@ -180,11 +181,14 @@ Matter.Events.on(engine, 'afterUpdate', () => {
 socket.onmessage = (e) => {
   let { data } = e;
   data = JSON.parse(data);
-  const { keysPressed } = data;
-  leftMotorLevel = parseInt(data.leftPowerLevel, 10);
-  rightMotorLevel = parseInt(data.rightPowerLevel, 10);
+  // const { keysPressed } = data;
+  if (data.leftPowerLevel && data.rightPowerLevel) {
+    leftMotorLevel = parseInt(data.leftPowerLevel, 10);
+    rightMotorLevel = parseInt(data.rightPowerLevel, 10);
+  }
+  Matter.Runner.tick(runner, engine, timeDelta);
 
-  if (keysPressed.includes('r')) {
+  if (data.reset) {
     windSpeedSlider.value = 0;
     windSpeedSliderText.value = 0;
     windSpeed = 0;
@@ -192,12 +196,17 @@ socket.onmessage = (e) => {
     Matter.Body.setVelocity(blimpBase, { x: 0, y: 0 });
     Matter.Body.setAngularVelocity(blimpBase, 0);
     Matter.Body.setAngle(blimpBase, 0);
-  }
-  if (keysPressed.includes('t')) {
     windSpeed = Math.random() * 0.0001;
     windSpeedSlider.value = windSpeed;
     windSpeedSliderText.value = windSpeed;
     windPosition = Math.random() * Math.PI * 2;
     windDirection = Math.random() * Math.PI * 2;
   }
+  // if (keysPressed.includes('t')) {
+  //   windSpeed = Math.random() * 0.0001;
+  //   windSpeedSlider.value = windSpeed;
+  //   windSpeedSliderText.value = windSpeed;
+  //   windPosition = Math.random() * Math.PI * 2;
+  //   windDirection = Math.random() * Math.PI * 2;
+  // }
 };

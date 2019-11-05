@@ -19,10 +19,12 @@ Sending the following data structures in the websocket as data (e.g. using `webs
 Input Data Structure for Changing Motor Speed: 
 ```javascript
 {
-    leftPowerLevel: Number,
-    rightPowerLevel: Number,
+    leftPowerLevel: String,
+    rightPowerLevel: String,
 }
 ```
+For expected operation, only send strings that can be converted to integers (i.e. `ParseInt()` works). Sending raw integers will produce unexpected results when using `0` for power levels.
+
 Resetting the Simulator:
 ```javascript
 {

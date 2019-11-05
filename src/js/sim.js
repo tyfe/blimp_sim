@@ -11,7 +11,7 @@ const { Bodies } = Matter;
 const engine = Engine.create();
 const { world } = engine;
 
-const motorForce = 0.0005 * (1 / 128);
+const motorForce = 0.00025 * (1 / 128);
 const blimpRadius = 30;
 const timeDelta = 16.666; // time delta in ms
 
@@ -39,7 +39,7 @@ const blimpBase = Bodies.circle(400, 300, blimpRadius, {
   friction: 0.7,
   frictionStatic: 0,
   frictionAir: 0.02,
-  restitution: 0.5,
+  restitution: 1,
   ground: false,
 });
 
@@ -145,29 +145,42 @@ Matter.Events.on(engine, 'beforeTick', () => {
 
 // setup for remote connection
 const socket = new WebSocket('ws://localhost:5005');
-const velocityList = [];
 
 socket.onopen = () => {
   console.log('Connection to localhost succeeded');
 };
 
+const lastVelocity = [blimpBase.velocity];
+
 Matter.Events.on(engine, 'afterUpdate', () => {
-  if (velocityList.length > 5) {
-    velocityList.pop();
+  let deltaV = Matter.Vector.sub(blimpBase.velocity, lastVelocity[0]);
+  lastVelocity.push(Matter.Vector.clone(blimpBase.velocity));
+  if (lastVelocity.length > 5) {
+    lastVelocity.shift();
   }
 
-  // need to make velocity and acceleration relative to blimp
-  velocityList.push(blimpBase.velocity);
-  const sum = velocityList.reduce((a, b) => ({ x: a.x + b.x, y: a.y + b.y }));
+  // console.log(blimpBase.velocity, lastVelocity[0]);
+
+  // rotate velocity so that it is relative to the coordinate frame of the blimp
+  const relativeVelocity = Matter.Vector.rotate(blimpBase.velocity, blimpBase.angle);
+  deltaV = Matter.Vector.rotate(deltaV, blimpBase.angle);
+
   const acceleration = {
-    x: sum.x / (timeDelta * velocityList.length),
-    y: sum.y / (timeDelta * velocityList.length),
+    x: (deltaV.x * 1000) / (timeDelta * lastVelocity.length),
+    y: (deltaV.y * 1000) / (timeDelta * lastVelocity.length),
   };
+
+
+  // determine if blimp is close to a wall
+  const blimpPosition = blimpBase.position;
+  const closeToWall = (blimpPosition.x > 700 || blimpPosition.x < 100)
+    || (blimpPosition.y > 500 || blimpPosition.y < 100);
 
   const message = {
     acceleration,
     angularVelocity: blimpBase.angularVelocity,
-    linearVelocity: blimpBase.velocity,
+    linearVelocity: relativeVelocity,
+    closeToWall,
   };
 
   if (socket.readyState === WebSocket.OPEN) {
@@ -181,7 +194,6 @@ Matter.Events.on(engine, 'afterUpdate', () => {
 socket.onmessage = (e) => {
   let { data } = e;
   data = JSON.parse(data);
-  // const { keysPressed } = data;
   if (data.leftPowerLevel && data.rightPowerLevel) {
     leftMotorLevel = parseInt(data.leftPowerLevel, 10);
     rightMotorLevel = parseInt(data.rightPowerLevel, 10);
@@ -189,24 +201,14 @@ socket.onmessage = (e) => {
   Matter.Runner.tick(runner, engine, timeDelta);
 
   if (data.reset) {
-    windSpeedSlider.value = 0;
-    windSpeedSliderText.value = 0;
-    windSpeed = 0;
     Matter.Body.setPosition(blimpBase, { x: 400, y: 300 });
     Matter.Body.setVelocity(blimpBase, { x: 0, y: 0 });
     Matter.Body.setAngularVelocity(blimpBase, 0);
     Matter.Body.setAngle(blimpBase, 0);
-    windSpeed = Math.random() * 0.0001;
+    windSpeed = 0.000025;
     windSpeedSlider.value = windSpeed;
     windSpeedSliderText.value = windSpeed;
     windPosition = Math.random() * Math.PI * 2;
     windDirection = Math.random() * Math.PI * 2;
   }
-  // if (keysPressed.includes('t')) {
-  //   windSpeed = Math.random() * 0.0001;
-  //   windSpeedSlider.value = windSpeed;
-  //   windSpeedSliderText.value = windSpeed;
-  //   windPosition = Math.random() * Math.PI * 2;
-  //   windDirection = Math.random() * Math.PI * 2;
-  // }
 };

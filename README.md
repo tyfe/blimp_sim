@@ -31,7 +31,7 @@ Resetting the Simulator:
     reset: Boolean,
 }
 ```
-Note that resetting the simulator also randomizes the wind application point and direction.
+Note that resetting the simulator also randomizes the wind application point and direction. The wind will apply a force every engine tick at the randomized point with the randomized direction. The direction and application point will not change until the reset command is sent again.
 
 # Additional Notes
 The webpage will attempt to connect to the IP address specified in `src/js/sim.js` using a websocket so that a connected server can remotely control the simulation. If necessary, the IP address can be changed in this source code. The keyboard commands will be described in that portion of the code.

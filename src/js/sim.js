@@ -11,7 +11,7 @@ const { Bodies } = Matter;
 const engine = Engine.create();
 const { world } = engine;
 
-const motorForce = 0.000125 * (1 / 127);
+const motorForce = 0.00005 * (1 / 127);
 const blimpRadius = 30;
 const timeDelta = 16.666; // time delta in ms
 
@@ -35,7 +35,7 @@ const runner = Runner.create();
 world.gravity.y = 0;
 
 // add stiff global constraint
-const blimpBase = Bodies.circle(400, 300, blimpRadius, {
+const blimpBase = Bodies.circle(40000, 30000, blimpRadius, {
   density: 0.001,
   friction: 0.7,
   frictionStatic: 0,
@@ -46,12 +46,12 @@ const blimpBase = Bodies.circle(400, 300, blimpRadius, {
 
 Matter.Body.setAngle(blimpBase, Math.PI / -2);
 
-const leftWall = Bodies.rectangle(-10, 300, 60, 610, { isStatic: true });
-const rightWall = Bodies.rectangle(810, 300, 60, 610, { isStatic: true });
-const topWall = Bodies.rectangle(405, 15, 810, 30, { isStatic: true });
-const bottomWall = Bodies.rectangle(405, 585, 810, 30, { isStatic: true });
+// const leftWall = Bodies.rectangle(-10, 300, 60, 610, { isStatic: true });
+// const rightWall = Bodies.rectangle(810, 300, 60, 610, { isStatic: true });
+// const topWall = Bodies.rectangle(405, 15, 810, 30, { isStatic: true });
+// const bottomWall = Bodies.rectangle(405, 585, 810, 30, { isStatic: true });
 
-World.add(world, [blimpBase, leftWall, rightWall, topWall, bottomWall]);
+World.add(world, [blimpBase]);
 
 // fit the render viewport to the scene
 Render.lookAt(render, {
@@ -99,16 +99,21 @@ let windDirection = Math.random() * Math.PI * 2;
 
 let leftMotorLevel = 0;
 let rightMotorLevel = 0;
+let acceleration = { x: 0, y: 0 };
 
 const drawVectors = () => {
   const { canvas } = render;
   const { angle } = blimpBase;
   const ctx = canvas.getContext('2d');
+  const positionOffset = {
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+  };
   const windForceVector = {
     x: windSpeed * Math.cos(windDirection),
     y: windSpeed * Math.sin(windDirection),
   };
-  const windAppPoint = Matter.Vector.add(blimpBase.position, {
+  const windAppPoint = Matter.Vector.add(positionOffset, {
     x: blimpRadius * Math.cos(windPosition),
     y: blimpRadius * Math.sin(windPosition),
   });
@@ -117,39 +122,60 @@ const drawVectors = () => {
   ctx.strokeStyle = '#00ffff';
   ctx.beginPath();
 
-  ctx.moveTo(blimpBase.position.x, blimpBase.position.y);
-  ctx.lineTo(blimpBase.position.x + 100 * blimpBase.velocity.x,
-    blimpBase.position.y + 100 * blimpBase.velocity.y);
+  ctx.moveTo(positionOffset.x, positionOffset.y);
+  ctx.lineTo(positionOffset.x + 100 * blimpBase.velocity.x,
+    positionOffset.y + 100 * blimpBase.velocity.y);
 
   ctx.stroke();
 
   ctx.strokeStyle = '#ff00ff';
   if (blimpBase.leftMotorForce) {
-    const position = Matter.Vector.add(blimpBase.position,
+    const position = Matter.Vector.add(positionOffset,
       { x: 20 * Math.cos(angle + Math.PI / 2), y: 20 * Math.sin(angle + Math.PI / 2) });
     ctx.beginPath();
     ctx.moveTo(position.x, position.y);
-    ctx.lineTo(position.x + 120000 * blimpBase.leftMotorForce.x,
-      position.y + 120000 * blimpBase.leftMotorForce.y);
+    ctx.lineTo(position.x + 300000 * blimpBase.leftMotorForce.x,
+      position.y + 300000 * blimpBase.leftMotorForce.y);
     ctx.stroke();
   }
   if (blimpBase.rightMotorForce) {
-    const position = Matter.Vector.add(blimpBase.position,
+    const position = Matter.Vector.add(positionOffset,
       { x: 20 * Math.cos(angle - Math.PI / 2), y: 20 * Math.sin(angle - Math.PI / 2) });
     ctx.beginPath();
     ctx.moveTo(position.x, position.y);
-    ctx.lineTo(position.x + 120000 * blimpBase.rightMotorForce.x,
-      position.y + 120000 * blimpBase.rightMotorForce.y);
+    ctx.lineTo(position.x + 300000 * blimpBase.rightMotorForce.x,
+      position.y + 300000 * blimpBase.rightMotorForce.y);
     ctx.stroke();
   }
 
   ctx.beginPath();
   ctx.moveTo(windAppPoint.x, windAppPoint.y);
-  ctx.lineTo(windAppPoint.x + 1200000 * windForceVector.x,
-    windAppPoint.y + 1200000 * windForceVector.y);
+  ctx.lineTo(windAppPoint.x + 900000 * windForceVector.x,
+    windAppPoint.y + 900000 * windForceVector.y);
   ctx.stroke();
+
+  // let reward = 1 - (1.5 * Math.abs(blimpBase.speed));
+  let reward = 0;
+  const accScalar = Math.sqrt(acceleration.x ** 2, acceleration.y ** 2);
+  reward += 1 - (4 * blimpBase.speed) ** 2 - (100000 * accScalar) ** 2
+    - (100 * blimpBase.angularSpeed) ** 2;
+
+  ctx.font = '20px Arial';
+  ctx.strokeText(`speed: ${blimpBase.speed.toFixed(3)}`, 10, 50);
+  ctx.strokeText(`reward: ${reward.toFixed(1)}`, 10, 80);
+  ctx.strokeText(`angle: ${(Math.atan2(Math.sin(blimpBase.angle), Math.cos(blimpBase.angle)) + Math.PI).toFixed(2)}`, 10, 110);
+  ctx.strokeText(`acc: ${accScalar.toExponential(2)}`, 10, 140);
+  ctx.strokeText(`angSpeed: ${blimpBase.angularVelocity.toExponential(2)}`, 10, 170);
+
+  // ctx.strokeStyle = '#ffffff';
+  // ctx.beginPath();
+  // ctx.arc(positionOffset.x, positionOffset.y, 30, 0, 2 * Math.PI);
+  // ctx.stroke();
 };
 
+const centerCamera = (body) => {
+  Matter.Render.lookAt(render, body, { x: 400, y: 300 });
+};
 
 Matter.Events.on(engine, 'beforeTick', () => {
   let leftMotorForce = { x: 0, y: 0 };
@@ -169,6 +195,8 @@ Matter.Events.on(engine, 'beforeTick', () => {
     y: rightMotorLevel * motorForce * Math.sin(angle),
   });
 
+
+  // interval on wind application
   Matter.Body.applyForce(blimpBase, Matter.Vector.add(blimpBase.position, {
     x: blimpRadius * Math.cos(windPosition),
     y: blimpRadius * Math.sin(windPosition),
@@ -179,8 +207,20 @@ Matter.Events.on(engine, 'beforeTick', () => {
   Matter.Body.applyForce(blimpBase, leftPositionOffset, leftMotorForce);
   Matter.Body.applyForce(blimpBase, rightPositionOffset, rightMotorForce);
 
+  const totalForce = Matter.Vector.add(Matter.Vector.add(leftMotorForce, rightMotorForce), {
+    x: windSpeed * Math.cos(windDirection),
+    y: windSpeed * Math.sin(windDirection),
+  });
+
+  acceleration = {
+    x: totalForce.x / blimpBase.mass,
+    y: totalForce.y / blimpBase.mass,
+  };
+
   blimpBase.leftMotorForce = leftMotorForce;
   blimpBase.rightMotorForce = rightMotorForce;
+
+  centerCamera(blimpBase);
 });
 
 // setup for remote connection
@@ -190,39 +230,13 @@ socket.onopen = () => {
   console.log('Connection to localhost succeeded');
 };
 
-const lastVelocity = [blimpBase.velocity];
-
 Matter.Events.on(engine, 'afterUpdate', () => {
-  let deltaV = Matter.Vector.sub(blimpBase.velocity, lastVelocity[0]);
-  lastVelocity.push(Matter.Vector.clone(blimpBase.velocity));
-  if (lastVelocity.length > 5) {
-    lastVelocity.shift();
-  }
-
-  // console.log(blimpBase.velocity, lastVelocity[0]);
-
-  // rotate velocity so that it is relative to the coordinate frame of the blimp
-  const relativeVelocity = Matter.Vector.rotate(blimpBase.velocity, blimpBase.angle);
-  deltaV = Matter.Vector.rotate(deltaV, blimpBase.angle);
-
-  const acceleration = {
-    x: (deltaV.x * 1000) / (timeDelta * lastVelocity.length),
-    y: (deltaV.y * 1000) / (timeDelta * lastVelocity.length),
-  };
-
-
-  // determine if blimp is close to a wall
-  const blimpPosition = blimpBase.position;
-  const closeToWall = (blimpPosition.x > 700 || blimpPosition.x < 100)
-    || (blimpPosition.y > 500 || blimpPosition.y < 100);
-
+  acceleration = Matter.Vector.rotate(acceleration, blimpBase.angle);
   const message = {
     acceleration,
     angularVelocity: blimpBase.angularVelocity,
-    linearVelocity: relativeVelocity,
-    closeToWall,
+    linearVelocity: Matter.Vector.rotate(blimpBase.velocity, blimpBase.angle),
   };
-
   if (socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify(message));
   }
@@ -249,10 +263,13 @@ socket.onmessage = (e) => {
     Matter.Body.setVelocity(blimpBase, { x: 0, y: 0 });
     Matter.Body.setAngularVelocity(blimpBase, 0);
     Matter.Body.setAngle(blimpBase, Math.PI / -2);
-    windSpeed = 0.000025;
+    // windSpeed = Math.random() * 0.00003 + 0.00002;
+    windSpeed = 0.00005;
     windSpeedSlider.value = windSpeed;
     windSpeedSliderText.value = windSpeed;
     windPosition = Math.random() * Math.PI * 2;
     windDirection = Math.random() * Math.PI * 2;
+    windPosition = 0;
+    windDirection = 0;
   }
 };

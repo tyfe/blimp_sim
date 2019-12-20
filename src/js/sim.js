@@ -166,11 +166,6 @@ const drawVectors = () => {
   ctx.strokeText(`angle: ${(Math.atan2(Math.sin(blimpBase.angle), Math.cos(blimpBase.angle)) + Math.PI).toFixed(2)}`, 10, 110);
   ctx.strokeText(`acc: ${accScalar.toExponential(2)}`, 10, 140);
   ctx.strokeText(`angSpeed: ${blimpBase.angularVelocity.toExponential(2)}`, 10, 170);
-
-  // ctx.strokeStyle = '#ffffff';
-  // ctx.beginPath();
-  // ctx.arc(positionOffset.x, positionOffset.y, 30, 0, 2 * Math.PI);
-  // ctx.stroke();
 };
 
 const centerCamera = (body) => {
@@ -263,13 +258,13 @@ socket.onmessage = (e) => {
     Matter.Body.setVelocity(blimpBase, { x: 0, y: 0 });
     Matter.Body.setAngularVelocity(blimpBase, 0);
     Matter.Body.setAngle(blimpBase, Math.PI / -2);
-    // windSpeed = Math.random() * 0.00003 + 0.00002;
-    windSpeed = 0.00005;
+    windSpeed = Math.random() * 0.00003 + 0.00002;
+    // windSpeed = 0.00005;
     windSpeedSlider.value = windSpeed;
     windSpeedSliderText.value = windSpeed;
     windPosition = Math.random() * Math.PI * 2;
     windDirection = Math.random() * Math.PI * 2;
-    windPosition = 0;
-    windDirection = 0;
+    // windPosition = 0;
+    // windDirection = 0;
   }
 };
